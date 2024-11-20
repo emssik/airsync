@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "airsync"
+version = "0.1.0"
+description = ""
+authors = ["Daniel Roziecki <emssik@emssik.eu>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+python-dotenv = "^1.0.1"
+pyairtable = "^2.3.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
