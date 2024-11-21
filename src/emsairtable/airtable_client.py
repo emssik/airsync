@@ -1,4 +1,7 @@
 from typing import Dict, Optional
+import csv
+import os
+import time
 from pyairtable import Api
 from pyairtable.api.table import Table
 
@@ -129,3 +132,71 @@ class AirtableClient:
             tables = base.tables()
             return [table.name for table in tables]
         return []
+
+    def export_tables_to_csv(self, base_id: str, output_dir: str = ".") -> list[str]:
+        """
+        Eksportuje wszystkie tabele z bazy do plików CSV.
+        
+        Args:
+            base_id: ID bazy Airtable
+            output_dir: Katalog docelowy dla plików CSV (domyślnie katalog bieżący)
+            
+        Returns:
+            list[str]: Lista ścieżek do utworzonych plików CSV
+            
+        Raises:
+            ValueError: Gdy nie znaleziono bazy o podanym ID
+        """
+        base = self.get_base(base_id)
+        if not base:
+            raise ValueError(f"Nie znaleziono bazy o ID: {base_id}")
+            
+        os.makedirs(output_dir, exist_ok=True)
+        
+        exported_files = []
+        base_name = base.name
+        tables = base.tables()
+        
+        for table in tables:
+            table_start_time = time.time()
+            
+            # Pobierz wszystkie rekordy z tabeli (pyairtable automatycznie obsługuje paginację)
+            print(f"\nPobieranie rekordów z tabeli {table.name}...")
+            records = []
+            page_count = 0
+            
+            # Używamy iterate() do śledzenia postępu
+            for page in table.iterate():
+                page_count += 1
+                records.extend(page)
+                print(f"Pobrano stronę {page_count} ({len(page)} rekordów)")
+            
+            if not records:
+                print(f"Pomijam pustą tabelę: {table.name}")
+                continue
+                
+            # Utwórz nazwę pliku CSV
+            filename = f"{base_name}.{table.name}.csv"
+            filepath = os.path.join(output_dir, filename)
+            
+            # Przygotuj nagłówki
+            headers = set()
+            for record in records:
+                headers.update(record['fields'].keys())
+            headers = sorted(list(headers))
+            
+            # Zapisz do CSV
+            with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(headers)
+                for record in records:
+                    row = [record['fields'].get(header, '') for header in headers]
+                    writer.writerow(row)
+            
+            table_time = time.time() - table_start_time
+            records_count = len(records)
+            print(f"Wyeksportowano tabelę {table.name}: {records_count} rekordów w {table_time:.2f} sekund (stron: {page_count})")
+            
+            exported_files.append(filepath)
+            
+        return exported_files
