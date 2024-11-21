@@ -31,15 +31,17 @@ class AirtableClient:
         if not base:
             raise ValueError(f"Nie znaleziono bazy o ID: {base_id}")
         
-        tables = base.tables()  # Pobieramy tabele bezpośrednio z bazy
+        # Pobieramy cały schemat bazy
+        base_schema = base.schema()
+        
         result = {
             'name': base.name,
             'id': base.id,
             'tables': []
         }
         
-        for table in tables:
-            table_schema = table.schema()  # Pobieramy schemat dla każdej tabeli
+        # Iterujemy po tabelach w schemacie
+        for table in base_schema.tables:
             table_info = {
                 'name': table.name,
                 'id': table.id,
@@ -47,15 +49,19 @@ class AirtableClient:
             }
             
             # Dodajemy informacje o polach
-            if 'fields' in table_schema:
-                for field in table_schema['fields']:
-                    field_info = {
-                        'name': field['name'],
-                        'type': field['type'],
-                        'options': field.get('options', field.get('typeOptions', {})) or {}
-                    }
-                    table_info['fields'].append(field_info)
-                    
+            for field in table.fields:
+                field_info = {
+                    'name': field.name,
+                    'type': field.type,
+                    'options': {}
+                }
+                
+                # Dodajemy opcje pola jeśli istnieją
+                if hasattr(field, 'options') and field.options:
+                    field_info['options'] = field.options
+                
+                table_info['fields'].append(field_info)
+                
             result['tables'].append(table_info)
         
         return result
