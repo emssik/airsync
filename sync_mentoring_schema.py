@@ -3,6 +3,7 @@ import yaml
 from dotenv import load_dotenv
 from emsairtable.airtable_client import AirtableClient
 from emsairtable.schema_sync import SchemaSync
+from emsairtable.data_sync import DataSync
 from database.postgresql import PostgresClient
 
 def load_config():
@@ -32,16 +33,18 @@ def main():
     }
     
     if not pg_config['password']:
-        raise ValueError("Brak wymaganej zmiennej środowiskowej POSTGRES_PASSWORD")
+        raise ValueError("Brak wymaganej zmiennej środowiskowej POSTGRESQL_PASSWORD")
 
+    postgres_client = None
     try:
         # Inicjalizacja klientów
         print("Inicjalizacja klientów...")
         airtable_client = AirtableClient(airtable_api_key)
         postgres_client = PostgresClient(pg_config)
         
-        # Inicjalizacja synchronizatora schematów
+        # Inicjalizacja synchronizatorów
         schema_sync = SchemaSync(airtable_client, postgres_client)
+        data_sync = DataSync(airtable_client, postgres_client)
         
         # Pobierz i wyświetl informacje o bazie przed synchronizacją
         print("\nInformacje o bazie Mentoring:")
@@ -55,7 +58,16 @@ def main():
         # Synchronizacja schematu
         print("\nRozpoczynam synchronizację schematu...")
         schema_sync.sync_schema(mentoring_base_id)
-        print("Synchronizacja zakończona pomyślnie!")
+        print("Synchronizacja schematu zakończona pomyślnie!")
+        
+        # Synchronizacja danych
+        print("\nRozpoczynam synchronizację danych...")
+        try:
+            data_sync.sync_base_data(mentoring_base_id)
+            print("Synchronizacja danych zakończona pomyślnie!")
+        except Exception as e:
+            print(f"\nBłąd podczas synchronizacji danych: {str(e)}")
+            raise  # Przerwij działanie po pierwszym błędzie
         
         # Wyświetl listę tabel w PostgreSQL po synchronizacji
         print("\nTabele w PostgreSQL po synchronizacji:")
@@ -64,9 +76,10 @@ def main():
             print(f"- {table}")
         
     except Exception as e:
-        print(f"\nWystąpił błąd: {str(e)}")
+        print(f"\nWystąpił krytyczny błąd: {str(e)}")
+        raise  # Przerwij działanie programu
     finally:
-        if 'postgres_client' in locals():
+        if postgres_client:
             postgres_client.close()
 
 if __name__ == "__main__":

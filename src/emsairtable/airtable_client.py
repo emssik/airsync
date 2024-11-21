@@ -1,9 +1,6 @@
-from typing import Dict, Optional
-import csv
-import os
-import time
+from typing import Dict, List
 from pyairtable import Api
-from pyairtable.api.table import Table
+from pyairtable.formulas import match
 
 
 class AirtableClient:
@@ -12,191 +9,105 @@ class AirtableClient:
         Inicjalizuje klienta Airtable.
         
         Args:
-            api_key: Klucz API do Airtable
+            api_key: Klucz API lub token dostępu do Airtable
         """
-        self._api = Api(api_key)
-        self._bases = self._api.bases()
+        self.api = Api(api_key)
 
     def get_base_schema(self, base_id: str) -> Dict:
         """
-        Pobiera szczegółowy schemat bazy danych Airtable.
+        Pobiera schemat bazy Airtable.
         
         Args:
             base_id: ID bazy Airtable
-            
         Returns:
-            Dict zawierający strukturę bazy z informacjami o tabelach i polach
-        
-        Raises:
-            ValueError: Gdy nie znaleziono bazy o podanym ID
+            Schemat bazy zawierający informacje o tabelach i polach
         """
-        base = self.get_base(base_id)
-        if not base:
-            raise ValueError(f"Nie znaleziono bazy o ID: {base_id}")
+        base = self.api.base(base_id)
+        schema = base.schema()
         
-        # Pobieramy cały schemat bazy
-        base_schema = base.schema()
-        
-        result = {
-            'name': base.name,
-            'id': base.id,
-            'tables': []
-        }
-        
-        # Iterujemy po tabelach w schemacie
-        for table in base_schema.tables:
-            table_info = {
+        return {
+            'name': 'mentoring',
+            'tables': [{
                 'name': table.name,
-                'id': table.id,
-                'fields': []
-            }
-            
-            # Dodajemy informacje o polach tylko jeśli istnieją
-            if hasattr(table, 'fields') and table.fields:
-                for field in table.fields:
-                    field_info = {
-                        'name': field.name,
-                        'type': field.type,
-                        'options': {}
-                    }
-                    
-                    # Dodajemy opcje pola jeśli istnieją
-                    if hasattr(field, 'options') and field.options:
-                        field_info['options'] = field.options
-                    
-                    table_info['fields'].append(field_info)
-                
-            result['tables'].append(table_info)
-        
-        return result
+                'fields': [{
+                    'name': field.name,
+                    'type': self._normalize_field_type(field.type)
+                } for field in table.fields]
+            } for table in schema.tables]
+        }
 
-    def list_bases(self) -> Dict[str, str]:
+    def _normalize_field_type(self, airtable_type: str) -> str:
         """
-        Zwraca słownik z ID i nazwami wszystkich baz.
-        
-        Returns:
-            Dict[str, str]: Słownik {base_id: base_name}
-        """
-        return {base.id: base.name for base in self._bases}
-
-    def get_table(self, base_id: str, table_name: str) -> Optional[Table]:
-        """
-        Zwraca obiekt tabeli o podanej nazwie z określonej bazy.
+        Normalizuje typ pola z Airtable do standardowego formatu.
         
         Args:
-            base_id: ID bazy
+            airtable_type: Oryginalny typ pola z Airtable
+        Returns:
+            Znormalizowany typ pola
+        """
+        type_mapping = {
+            'multipleAttachments': 'text',
+            'multilineText': 'multilineText',
+            'singleLineText': 'singleLineText',
+            'checkbox': 'checkbox',
+            'date': 'date',
+            'dateTime': 'dateTime',
+            'number': 'number',
+            'currency': 'currency',
+            'percent': 'number',
+            'email': 'email',
+            'url': 'url',
+            'phoneNumber': 'phone',
+            'multipleSelects': 'multipleSelects',
+            'singleSelect': 'singleSelect',
+            'multipleRecordLinks': 'multipleRecordLinks',
+            'formula': 'formula',
+            'rollup': 'text',
+            'count': 'count',
+            'lookup': 'text'
+        }
+        return type_mapping.get(airtable_type, 'text')
+
+    def get_table_records(self, base_id: str, table_name: str) -> List[Dict]:
+        """
+        Pobiera wszystkie rekordy z tabeli Airtable.
+        
+        Args:
+            base_id: ID bazy Airtable
             table_name: Nazwa tabeli
-            
         Returns:
-            Optional[Table]: Obiekt tabeli lub None jeśli nie znaleziono
+            Lista rekordów z tabeli
         """
-        base = self._api.base(base_id)
-        try:
-            return base.table(table_name)
-        except KeyError:
-            return None
+        table = self.api.table(base_id, table_name)
+        return table.all()
 
-    def refresh_metadata(self):
+    def get_table_record(self, base_id: str, table_name: str, record_id: str) -> Dict:
         """
-        Odświeża metadane baz danych.
-        """
-        self._bases = self._api.bases()
-
-    def get_base(self, base_id: str):
-        """
-        Zwraca obiekt bazy o podanym ID.
+        Pobiera pojedynczy rekord z tabeli Airtable.
         
         Args:
             base_id: ID bazy Airtable
-            
+            table_name: Nazwa tabeli
+            record_id: ID rekordu
         Returns:
-            Obiekt bazy lub None jeśli nie znaleziono
+            Rekord z tabeli
         """
-        for base in self._bases:
-            if base.id == base_id:
-                return base
-        return None
+        table = self.api.table(base_id, table_name)
+        return table.get(record_id)
 
-    def list_tables(self, base_id: str) -> list[str]:
+    def find_records(self, base_id: str, table_name: str, filter_by: Dict = None) -> List[Dict]:
         """
-        Zwraca listę nazw tabel dla podanej bazy.
+        Wyszukuje rekordy w tabeli Airtable spełniające określone kryteria.
         
         Args:
             base_id: ID bazy Airtable
-            
+            table_name: Nazwa tabeli
+            filter_by: Słownik z kryteriami wyszukiwania {nazwa_pola: wartość}
         Returns:
-            list[str]: Lista nazw tabel
+            Lista znalezionych rekordów
         """
-        base = self.get_base(base_id)
-        if base:
-            tables = base.tables()
-            return [table.name for table in tables]
-        return []
-
-    def export_tables_to_csv(self, base_id: str, output_dir: str = ".") -> list[str]:
-        """
-        Eksportuje wszystkie tabele z bazy do plików CSV.
-        
-        Args:
-            base_id: ID bazy Airtable
-            output_dir: Katalog docelowy dla plików CSV (domyślnie katalog bieżący)
-            
-        Returns:
-            list[str]: Lista ścieżek do utworzonych plików CSV
-            
-        Raises:
-            ValueError: Gdy nie znaleziono bazy o podanym ID
-        """
-        base = self.get_base(base_id)
-        if not base:
-            raise ValueError(f"Nie znaleziono bazy o ID: {base_id}")
-            
-        os.makedirs(output_dir, exist_ok=True)
-        
-        exported_files = []
-        base_name = base.name
-        tables = base.tables()
-        
-        for table in tables:
-            table_start_time = time.time()
-            
-            # Pobierz wszystkie rekordy z tabeli (pyairtable automatycznie obsługuje paginację)
-            print(f"\nPobieranie rekordów z tabeli {table.name}...")
-            records = []
-            page_count = 0
-            
-            # Używamy iterate() do śledzenia postępu
-            for page in table.iterate():
-                page_count += 1
-                records.extend(page)
-                print(f"Pobrano stronę {page_count} ({len(page)} rekordów)")
-            
-            if not records:
-                print(f"Pomijam pustą tabelę: {table.name}")
-                continue
-                
-            # Utwórz nazwę pliku CSV
-            filename = f"{base_name}.{table.name}.csv"
-            filepath = os.path.join(output_dir, filename)
-            
-            # Przygotuj nagłówki
-            headers = set()
-            for record in records:
-                headers.update(record['fields'].keys())
-            headers = sorted(list(headers))
-            
-            # Zapisz do CSV
-            with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(headers)
-                for record in records:
-                    row = [record['fields'].get(header, '') for header in headers]
-                    writer.writerow(row)
-            
-            table_time = time.time() - table_start_time
-            records_count = len(records)
-            print(f"Wyeksportowano tabelę {table.name}: {records_count} rekordów w {table_time:.2f} sekund (stron: {page_count})")
-            
-            exported_files.append(filepath)
-            
-        return exported_files
+        table = self.api.table(base_id, table_name)
+        if filter_by:
+            formula = match(filter_by)
+            return table.all(formula=formula)
+        return table.all()
