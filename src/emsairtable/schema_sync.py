@@ -58,14 +58,28 @@ class SchemaSync:
             fields: Lista pól z ich typami i opcjami
         """
         field_definitions = []
+        used_names = set()
         
         # Zawsze dodajemy pole id jako PRIMARY KEY
         field_definitions.append("id SERIAL PRIMARY KEY")
         field_definitions.append("airtable_id VARCHAR(255) UNIQUE")
+        used_names.add('id')
+        used_names.add('airtable_id')
         
         for field in fields:
             field_type = self.type_mapping.get(field['type'], 'TEXT')
-            field_name = field['name'].lower().replace(' ', '_')
+            # Zamiana myślników na podkreślniki i usunięcie innych niedozwolonych znaków
+            field_name = field['name'].lower().replace(' ', '_').replace('-', '_')
+            field_name = ''.join(c for c in field_name if c.isalnum() or c == '_')
+            
+            # Dodaj numerację do zduplikowanych nazw pól
+            base_name = field_name
+            counter = 1
+            while field_name in used_names:
+                field_name = f"{base_name}_{counter}"
+                counter += 1
+            
+            used_names.add(field_name)
             field_def = f"{field_name} {field_type}"
             field_definitions.append(field_def)
 
@@ -102,6 +116,21 @@ class SchemaSync:
         """
         self.postgres.execute_modification(trigger_sql)
 
+    def clean_name(self, name: str) -> str:
+        """
+        Czyści nazwę z niedozwolonych znaków dla PostgreSQL.
+        
+        Args:
+            name: Nazwa do wyczyszczenia
+        Returns:
+            Oczyszczona nazwa
+        """
+        # Zamiana kropek, spacji, myślników i innych problematycznych znaków na podkreślniki
+        cleaned = name.lower().replace('.', '_').replace(' ', '_').replace('-', '_')
+        # Usunięcie wszystkich znaków oprócz alfanumerycznych i podkreślników
+        cleaned = ''.join(c for c in cleaned if c.isalnum() or c == '_')
+        return cleaned
+
     def sync_schema(self, base_id: str) -> None:
         """
         Synchronizuje schemat bazy Airtable z PostgreSQL.
@@ -113,11 +142,12 @@ class SchemaSync:
         airtable_schema = self.airtable.get_base_schema(base_id)
         existing_tables = self.get_postgres_tables()
         
-        base_name = airtable_schema['name'].lower().replace(' ', '_')
+        base_name = self.clean_name(airtable_schema['name'])
         
         for table in airtable_schema['tables']:
             # Tworzymy nazwę tabeli w formacie: nazwa_bazy_nazwa_tabeli
-            pg_table_name = f"{base_name}_{table['name'].lower().replace(' ', '_')}"
+            table_name = self.clean_name(table['name'])
+            pg_table_name = f"{base_name}_{table_name}"
             
             if pg_table_name not in existing_tables:
                 print(f"Tworzenie tabeli: {pg_table_name}")
