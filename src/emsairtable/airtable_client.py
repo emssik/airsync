@@ -12,6 +12,7 @@ class AirtableClient:
             api_key: Klucz API do Airtable
         """
         self._api = Api(api_key)
+        self._bases = self._api.bases()
 
     def get_base_schema(self, base_id: str) -> Dict:
         """
@@ -22,23 +23,42 @@ class AirtableClient:
             
         Returns:
             Dict zawierający strukturę bazy z informacjami o tabelach i polach
-        """
-        base = self._api.base(base_id)
-        schema = base.schema()
         
-        return {
+        Raises:
+            ValueError: Gdy nie znaleziono bazy o podanym ID
+        """
+        base = self.get_base(base_id)
+        if not base:
+            raise ValueError(f"Nie znaleziono bazy o ID: {base_id}")
+        
+        tables = base.tables()  # Pobieramy tabele bezpośrednio z bazy
+        result = {
             'name': base.name,
             'id': base.id,
-            'tables': [{
+            'tables': []
+        }
+        
+        for table in tables:
+            table_schema = table.schema()  # Pobieramy schemat dla każdej tabeli
+            table_info = {
                 'name': table.name,
                 'id': table.id,
-                'fields': [{
-                    'name': field.name,
-                    'type': field.type,
-                    'options': getattr(field, 'options', {}) or {}
-                } for field in table.fields]
-            } for table in schema.tables]
-        }
+                'fields': []
+            }
+            
+            # Dodajemy informacje o polach
+            if 'fields' in table_schema:
+                for field in table_schema['fields']:
+                    field_info = {
+                        'name': field['name'],
+                        'type': field['type'],
+                        'options': field.get('options', field.get('typeOptions', {})) or {}
+                    }
+                    table_info['fields'].append(field_info)
+                    
+            result['tables'].append(table_info)
+        
+        return result
 
     def list_bases(self) -> Dict[str, str]:
         """
@@ -47,8 +67,7 @@ class AirtableClient:
         Returns:
             Dict[str, str]: Słownik {base_id: base_name}
         """
-        bases = self._api.bases()
-        return {base.id: base.name for base in bases}
+        return {base.id: base.name for base in self._bases}
 
     def get_table(self, base_id: str, table_name: str) -> Optional[Table]:
         """
@@ -66,3 +85,40 @@ class AirtableClient:
             return base.table(table_name)
         except KeyError:
             return None
+
+    def refresh_metadata(self):
+        """
+        Odświeża metadane baz danych.
+        """
+        self._bases = self._api.bases()
+
+    def get_base(self, base_id: str):
+        """
+        Zwraca obiekt bazy o podanym ID.
+        
+        Args:
+            base_id: ID bazy Airtable
+            
+        Returns:
+            Obiekt bazy lub None jeśli nie znaleziono
+        """
+        for base in self._bases:
+            if base.id == base_id:
+                return base
+        return None
+
+    def list_tables(self, base_id: str) -> list[str]:
+        """
+        Zwraca listę nazw tabel dla podanej bazy.
+        
+        Args:
+            base_id: ID bazy Airtable
+            
+        Returns:
+            list[str]: Lista nazw tabel
+        """
+        base = self.get_base(base_id)
+        if base:
+            tables = base.tables()
+            return [table.name for table in tables]
+        return []
