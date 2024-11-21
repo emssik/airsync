@@ -49,15 +49,7 @@ class DataSync:
         if field_type == 'checkbox':
             return bool(value)
             
-        # Dla długich tekstów i innych typów tekstowych
-        if isinstance(value, str):
-            if len(value) > 255:
-                # Jeśli tekst jest dłuższy niż 255 znaków, zwróć go jako text
-                return value
-            # Dla krótszych tekstów zachowujemy oryginalną wartość
-            return value
-                
-        # Dla pozostałych typów
+        # Dla wszystkich typów tekstowych po prostu zwracamy string
         return str(value)
 
     def _batch_upsert_records(self, pg_table_name: str, records: List[Dict], table_schema: Dict) -> None:
@@ -115,6 +107,30 @@ class DataSync:
         for values in values_list:
             self.postgres.execute_modification(upsert_query, values)
 
+    def _update_column_types(self, pg_table_name: str, records: List[Dict]) -> None:
+        """
+        Aktualizuje typy kolumn w PostgreSQL na TEXT dla kolumn zawierających długie teksty.
+        """
+        # Znajdź kolumny zawierające długie teksty
+        long_text_columns = set()
+        for record in records:
+            for field_name, value in record['fields'].items():
+                if isinstance(value, str) and len(value) > 255:
+                    clean_name = self.schema_sync.clean_name(field_name)
+                    long_text_columns.add(clean_name)
+
+        # Zmień typ kolumn na TEXT
+        for column in long_text_columns:
+            alter_query = f"""
+                ALTER TABLE {self.postgres.schema}.{pg_table_name} 
+                ALTER COLUMN {column} TYPE TEXT;
+            """
+            try:
+                self.postgres.execute_modification(alter_query)
+                print(f"Zmieniono typ kolumny {column} na TEXT")
+            except Exception as e:
+                print(f"Nie udało się zmienić typu kolumny {column}: {str(e)}")
+
     def sync_table_data(self, base_id: str, table_name: str) -> None:
         """
         Synchronizuje dane z jednej tabeli Airtable do PostgreSQL.
@@ -133,6 +149,9 @@ class DataSync:
 
         records = self.airtable.get_table_records(base_id, table_name)
         print(f"Pobrano {len(records)} rekordów z tabeli {table_name}")
+
+        # Dodane: Aktualizuj typy kolumn przed wstawieniem danych
+        self._update_column_types(pg_table_name, records)
 
         batch_size = 10
         for i in range(0, len(records), batch_size):
