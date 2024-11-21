@@ -23,29 +23,33 @@ def mock_api():
         table2.id = "tbl2"
         table2.name = "Table 2"
         
-        # Dodaj mock dla schema() w table1
-        table1.schema.return_value = {
-            'fields': [
-                {
-                    'name': 'Name',
-                    'type': 'singleLineText',
-                    'options': {'precision': 2}
-                },
-                {
-                    'name': 'Age',
-                    'type': 'number',
-                    'typeOptions': {'format': 'integer'}
-                },
-                {
-                    'name': 'Status',
-                    'type': 'multipleSelect',
-                    'options': {'choices': ['Active', 'Inactive']}
-                }
-            ]
-        }
+        # Przygotuj mock dla schematu bazy
+        schema = Mock()
+        schema.tables = [table1]  # Ustawiamy tables jako listę
+        
+        # Tworzymy mocki pól z właściwościami jako zwykłe wartości
+        field1 = Mock()
+        field1.name = "Name"
+        field1.type = "singleLineText"
+        field1.options = {'precision': 2}
+        
+        field2 = Mock()
+        field2.name = "Age"
+        field2.type = "number"
+        field2.options = {'format': 'integer'}
+        
+        field3 = Mock()
+        field3.name = "Status"
+        field3.type = "multipleSelect"
+        field3.options = {'choices': ['Active', 'Inactive']}
+        
+        # Przypisz pola do tabeli
+        table1.fields = [field1, field2, field3]
         
         # Skonfiguruj zachowanie mocków
         base1.tables.return_value = [table1]
+        base1.schema.return_value = schema
+        
         base2.tables.return_value = [table2]
         mock_api.return_value.bases.return_value = [base1, base2]
         
