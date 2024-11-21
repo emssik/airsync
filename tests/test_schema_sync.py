@@ -79,12 +79,30 @@ def test_create_table(schema_sync, mock_postgres_client):
     
     # Sprawdź czy pierwsze wywołanie zawiera CREATE TABLE
     first_call = mock_postgres_client.execute_modification.call_args_list[0]
-    create_sql = first_call[0][0]
-    assert 'CREATE TABLE' in create_sql
-    assert 'test_table' in create_sql
-    assert 'name VARCHAR(255)' in create_sql.lower()
-    assert 'email VARCHAR(255)' in create_sql.lower()
-    assert 'age NUMERIC' in create_sql.lower()
+    create_sql = first_call[0][0].lower()
+    
+    # Sprawdzamy czy wszystkie wymagane elementy są w SQL-u
+    required_elements = [
+        'create table',
+        'test_table',
+        'id serial primary key',
+        'airtable_id varchar(255)',
+        'name varchar(255)',
+        'email varchar(255)',
+        'age numeric',
+        'created_at timestamp',
+        'updated_at timestamp'
+    ]
+    
+    for element in required_elements:
+        assert element in create_sql, f"Brak wymaganego elementu: {element}"
+
+    # Sprawdzamy trigger
+    trigger_sql = mock_postgres_client.execute_modification.call_args_list[1][0][0].lower()
+    assert 'create trigger' in trigger_sql
+    assert 'update_updated_at_trigger' in trigger_sql
+    assert 'before update' in trigger_sql
+    assert 'for each row' in trigger_sql
 
 
 def test_sync_schema_new_table(schema_sync, mock_airtable_client, mock_postgres_client, sample_airtable_schema):
@@ -102,8 +120,8 @@ def test_sync_schema_new_table(schema_sync, mock_airtable_client, mock_postgres_
     
     # Sprawdź czy utworzono tabelę
     assert mock_postgres_client.execute_modification.call_count == 2
-    create_sql = mock_postgres_client.execute_modification.call_args_list[0][0][0]
-    assert 'test_base_customers' in create_sql.lower()
+    create_sql = mock_postgres_client.execute_modification.call_args_list[0][0][0].lower()
+    assert 'test_base_customers' in create_sql
 
 
 def test_sync_schema_existing_table(schema_sync, mock_airtable_client, mock_postgres_client, sample_airtable_schema):
