@@ -125,9 +125,18 @@ def test_get_base_schema_nonexistent_base(mock_api):
 
 def test_get_base_schema_empty_table(mock_api):
     # Modyfikujemy mock dla table1, aby zwracał pustą listę pól
+    empty_table = Mock()
+    empty_table.id = "tbl1"
+    empty_table.name = "Table 1"
+    empty_table.fields = []  # Pusta lista pól
+    
+    empty_schema = Mock()
+    empty_schema.tables = [empty_table]
+    
+    # Znajdujemy bazę base1 i modyfikujemy jej schemat
     for base in mock_api.bases.return_value:
         if base.id == "base1":
-            base.tables.return_value[0].schema.return_value = {'fields': []}
+            base.schema.return_value = empty_schema
     
     client = AirtableClient("fake_api_key")
     schema = client.get_base_schema("base1")

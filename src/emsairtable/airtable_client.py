@@ -48,19 +48,20 @@ class AirtableClient:
                 'fields': []
             }
             
-            # Dodajemy informacje o polach
-            for field in table.fields:
-                field_info = {
-                    'name': field.name,
-                    'type': field.type,
-                    'options': {}
-                }
-                
-                # Dodajemy opcje pola jeśli istnieją
-                if hasattr(field, 'options') and field.options:
-                    field_info['options'] = field.options
-                
-                table_info['fields'].append(field_info)
+            # Dodajemy informacje o polach tylko jeśli istnieją
+            if hasattr(table, 'fields') and table.fields:
+                for field in table.fields:
+                    field_info = {
+                        'name': field.name,
+                        'type': field.type,
+                        'options': {}
+                    }
+                    
+                    # Dodajemy opcje pola jeśli istnieją
+                    if hasattr(field, 'options') and field.options:
+                        field_info['options'] = field.options
+                    
+                    table_info['fields'].append(field_info)
                 
             result['tables'].append(table_info)
         
