@@ -18,20 +18,28 @@ class DataSync:
         self.postgres = postgres_client
         self.schema_sync = SchemaSync(airtable_client, postgres_client)
 
-    def _convert_value(self, value: Any, field_type: str) -> Any:
+    def _convert_value(self, value: Any, field_type: str, is_id_field: bool = False) -> Any:
         """
         Konwertuje wartość z Airtable na odpowiedni typ PostgreSQL.
+        
+        Args:
+            value: Wartość do konwersji
+            field_type: Typ pola z Airtable
+            is_id_field: Czy pole jest identyfikatorem (np. airtable_id lub pole linkujące)
         """
         if value is None:
             return None
-            
+        
+        # ID zawsze traktujemy jako tekst
+        if is_id_field:
+            return str(value)
+        
         if isinstance(value, list):
-            # Dla list (np. multipleSelects, multipleRecordLinks)
             try:
                 return json.dumps(value, ensure_ascii=False)
             except Exception:
                 return '[]'
-            
+        
         if field_type in ['date', 'dateTime']:
             try:
                 if 'T' in str(value):  # Format ISO z czasem
@@ -39,16 +47,16 @@ class DataSync:
                 return datetime.strptime(str(value), '%Y-%m-%d').date()
             except ValueError:
                 return None
-                
+            
         if field_type == 'number':
             try:
                 return float(value) if '.' in str(value) else int(value)
             except (ValueError, TypeError):
                 return None
-                
+            
         if field_type == 'checkbox':
             return bool(value)
-            
+        
         # Dla wszystkich typów tekstowych po prostu zwracamy string
         return str(value)
 
@@ -85,7 +93,9 @@ class DataSync:
             for field_name in all_fields:
                 value = fields.get(field_name)
                 field_type = field_types.get(field_name, 'text')
-                converted_value = self._convert_value(value, field_type)
+                # Sprawdź czy to pole ID lub pole linkujące
+                is_id_field = field_name == 'airtable_id' or field_type == 'multipleRecordLinks' or field_type == 'singleRecordLink'
+                converted_value = self._convert_value(value, field_type, is_id_field)
                 row_values.append(converted_value)
                 
             values_list.append(row_values)
@@ -105,31 +115,21 @@ class DataSync:
 
         # Wykonaj wsadowe upsert dla każdego rekordu
         for values in values_list:
-            self.postgres.execute_modification(upsert_query, values)
-
-    def _update_column_types(self, pg_table_name: str, records: List[Dict]) -> None:
-        """
-        Aktualizuje typy kolumn w PostgreSQL na TEXT dla kolumn zawierających długie teksty.
-        """
-        # Znajdź kolumny zawierające długie teksty
-        long_text_columns = set()
-        for record in records:
-            for field_name, value in record['fields'].items():
-                if isinstance(value, str) and len(value) > 255:
-                    clean_name = self.schema_sync.clean_name(field_name)
-                    long_text_columns.add(clean_name)
-
-        # Zmień typ kolumn na TEXT
-        for column in long_text_columns:
-            alter_query = f"""
-                ALTER TABLE {self.postgres.schema}.{pg_table_name} 
-                ALTER COLUMN {column} TYPE TEXT;
-            """
             try:
-                self.postgres.execute_modification(alter_query)
-                print(f"Zmieniono typ kolumny {column} na TEXT")
+                self.postgres.execute_modification(upsert_query, values)
             except Exception as e:
-                print(f"Nie udało się zmienić typu kolumny {column}: {str(e)}")
+                print("\nWystąpił błąd podczas wstawiania rekordu. Szczegóły:")
+                print(f"Tabela: {pg_table_name}")
+                print("\nMapowanie kolumn na wartości:")
+                for col, val in zip(columns, values):
+                    print(f"{col}: {val} (typ Python: {type(val).__name__})")
+                print("\nTypy pól z Airtable:")
+                for field_name in all_fields:
+                    field_type = field_types.get(field_name, 'text')
+                    print(f"{field_name}: {field_type}")
+                print(f"\nZapytanie SQL:\n{upsert_query}")
+                print(f"\nBłąd: {str(e)}")
+                raise
 
     def sync_table_data(self, base_id: str, table_name: str) -> None:
         """
@@ -149,9 +149,6 @@ class DataSync:
 
         records = self.airtable.get_table_records(base_id, table_name)
         print(f"Pobrano {len(records)} rekordów z tabeli {table_name}")
-
-        # Dodane: Aktualizuj typy kolumn przed wstawieniem danych
-        self._update_column_types(pg_table_name, records)
 
         batch_size = 10
         for i in range(0, len(records), batch_size):

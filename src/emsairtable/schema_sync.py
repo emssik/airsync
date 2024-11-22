@@ -15,28 +15,28 @@ class SchemaSync:
         self.airtable = airtable_client
         self.postgres = postgres_client
         self.type_mapping = {
-            "singleLineText": "VARCHAR(255)",
+            "singleLineText": "TEXT",
             "multilineText": "TEXT",
-            "email": "VARCHAR(255)",
-            "url": "VARCHAR(255)",
+            "email": "TEXT",
+            "url": "TEXT",
             "checkbox": "BOOLEAN",
             "date": "DATE",
             "dateTime": "TIMESTAMP",
             "number": "NUMERIC",
             "currency": "NUMERIC",
-            "singleSelect": "VARCHAR(255)",
+            "singleSelect": "TEXT",
             "multipleSelects": "TEXT",
             "multipleRecordLinks": "TEXT",
-            "formula": "VARCHAR(255)",
+            "formula": "TEXT",
             "richText": "TEXT",
             "autoNumber": "SERIAL",
             "createdTime": "TIMESTAMP",
             "lastModifiedTime": "TIMESTAMP",
             "count": "INTEGER",
-            "phone": "VARCHAR(50)",
+            "phone": "TEXT",
             "rating": "INTEGER",
             "duration": "INTERVAL",
-            "barcode": "VARCHAR(255)"
+            "barcode": "TEXT"
         }
 
     def get_postgres_tables(self) -> List[str]:
@@ -60,15 +60,12 @@ class SchemaSync:
         field_definitions = []
         used_names = set()
         
-        # Zawsze dodajemy pole id jako PRIMARY KEY
-        field_definitions.append("id SERIAL PRIMARY KEY")
-        field_definitions.append("airtable_id VARCHAR(255) UNIQUE")
-        used_names.add('id')
+        # Używamy airtable_id jako PRIMARY KEY zamiast dodatkowego id
+        field_definitions.append("airtable_id TEXT PRIMARY KEY")
         used_names.add('airtable_id')
         
         for field in fields:
             field_type = self.type_mapping.get(field['type'], 'TEXT')
-            # Zamiana myślników na podkreślniki i usunięcie innych niedozwolonych znaków
             field_name = field['name'].lower().replace(' ', '_').replace('-', '_')
             field_name = ''.join(c for c in field_name if c.isalnum() or c == '_')
             
