@@ -25,13 +25,22 @@ class AirtableClient:
         base = self.api.base(base_id)
         schema = base.schema()
         
+        # Pobierz nazwę bazy z listy baz
+        bases = self.list_bases()
+        base_name = bases.get(base_id, base_id).lower().replace(' ', '_')
+        
         return {
-            'name': 'mentoring',
+            'id': base_id,
+            'name': base_name,
             'tables': [{
+                'id': table.id,
                 'name': table.name,
+                'pg_name': f"{base_name}_{table.name.lower().replace(' ', '_')}",
                 'fields': [{
+                    'id': field.id,
                     'name': field.name,
-                    'type': self._normalize_field_type(field.type)
+                    'type': self._normalize_field_type(field.type),
+                    'options': field.options if hasattr(field, 'options') else None
                 } for field in table.fields]
             } for table in schema.tables]
         }
@@ -111,3 +120,13 @@ class AirtableClient:
             formula = match(filter_by)
             return table.all(formula=formula)
         return table.all()
+
+    def list_bases(self) -> Dict[str, str]:
+        """
+        Pobiera listę wszystkich dostępnych baz danych.
+        
+        Returns:
+            Dict[str, str]: Słownik z ID bazy jako kluczem i nazwą bazy jako wartością
+        """
+        bases = self.api.bases()
+        return {base.id: base.name for base in bases}
