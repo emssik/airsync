@@ -18,23 +18,16 @@ class DataSync:
         self.postgres = postgres_client
         self.schema_sync = SchemaSync(airtable_client, postgres_client)
 
-    def _convert_value(self, value: Any, field_type: str, is_id_field: bool = False) -> Any:
+    def _convert_value(self, value: Any, field_type: str) -> Any:
         """
         Konwertuje wartość z Airtable na odpowiedni typ PostgreSQL.
-        
-        Args:
-            value: Wartość do konwersji
-            field_type: Typ pola z Airtable
-            is_id_field: Czy pole jest identyfikatorem (np. airtable_id lub pole linkujące)
+        Wszystkie referencje do innych rekordów są zapisywane jako JSON string.
         """
         if value is None:
             return None
         
-        # ID zawsze traktujemy jako tekst
-        if is_id_field:
-            return str(value)
-        
         if isinstance(value, list):
+            # Wszystkie listy (łącznie z linkami do innych rekordów) zapisujemy jako JSON
             try:
                 return json.dumps(value, ensure_ascii=False)
             except Exception:
@@ -57,7 +50,7 @@ class DataSync:
         if field_type == 'checkbox':
             return bool(value)
         
-        # Dla wszystkich typów tekstowych po prostu zwracamy string
+        # Wszystko inne jako tekst
         return str(value)
 
     def _batch_upsert_records(self, pg_table_name: str, records: List[Dict], table_schema: Dict) -> None:
@@ -93,9 +86,7 @@ class DataSync:
             for field_name in all_fields:
                 value = fields.get(field_name)
                 field_type = field_types.get(field_name, 'text')
-                # Sprawdź czy to pole ID lub pole linkujące
-                is_id_field = field_name == 'airtable_id' or field_type == 'multipleRecordLinks' or field_type == 'singleRecordLink'
-                converted_value = self._convert_value(value, field_type, is_id_field)
+                converted_value = self._convert_value(value, field_type)
                 row_values.append(converted_value)
                 
             values_list.append(row_values)

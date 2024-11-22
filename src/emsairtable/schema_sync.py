@@ -66,8 +66,7 @@ class SchemaSync:
         
         for field in fields:
             field_type = self.type_mapping.get(field['type'], 'TEXT')
-            field_name = field['name'].lower().replace(' ', '_').replace('-', '_')
-            field_name = ''.join(c for c in field_name if c.isalnum() or c == '_')
+            field_name = self.clean_name(field['name'])
             
             # Dodaj numerację do zduplikowanych nazw pól
             base_name = field_name
@@ -123,9 +122,15 @@ class SchemaSync:
             Oczyszczona nazwa
         """
         # Zamiana kropek, spacji, myślników i innych problematycznych znaków na podkreślniki
-        cleaned = name.lower().replace('.', '_').replace(' ', '_').replace('-', '_')
+        cleaned = name.lower()
+        cleaned = cleaned.replace('.', '_').replace(' ', '_').replace('-', '_')
         # Usunięcie wszystkich znaków oprócz alfanumerycznych i podkreślników
         cleaned = ''.join(c for c in cleaned if c.isalnum() or c == '_')
+        
+        # Jeśli nazwa zaczyna się od cyfry, dodaj prefix 'col_'
+        if cleaned and cleaned[0].isdigit():
+            cleaned = f'col_{cleaned}'
+        
         return cleaned
 
     def sync_schema(self, base_id: str) -> None:
