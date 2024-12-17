@@ -3,3 +3,9 @@ database:
   port: 5435
   database_name: airsync
   user: emssik
+  excluded_databases:
+    - Ahoy!
+    - OC - asystentka
+    - Interface
+    - PING - PROJEKTY
+    - Bonjoro

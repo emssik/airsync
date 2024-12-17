@@ -121,15 +121,20 @@ class SchemaSync:
         Returns:
             Oczyszczona nazwa
         """
-        # Zamiana kropek, spacji, myślników i innych problematycznych znaków na podkreślniki
+        reserved_words = {
+            "check", "user", "select", "from", "where", "insert", "update", "delete", "do"
+            # Dodaj inne zarezerwowane słowa w zależności od potrzeb
+        }
+        
         cleaned = name.lower()
         cleaned = cleaned.replace('.', '_').replace(' ', '_').replace('-', '_')
-        # Usunięcie wszystkich znaków oprócz alfanumerycznych i podkreślników
         cleaned = ''.join(c for c in cleaned if c.isalnum() or c == '_')
         
-        # Jeśli nazwa zaczyna się od cyfry, dodaj prefix 'col_'
         if cleaned and cleaned[0].isdigit():
             cleaned = f'col_{cleaned}'
+        
+        if cleaned in reserved_words:
+            cleaned = f'{cleaned}_field'
         
         return cleaned
 

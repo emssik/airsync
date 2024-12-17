@@ -38,6 +38,9 @@ def main():
     if not pg_config['password']:
         raise ValueError("Brak wymaganej zmiennej środowiskowej POSTGRESQL_PASSWORD")
 
+    # Pobierz listę wykluczonych baz
+    excluded_databases = config['database'].get('excluded_databases', [])
+
     postgres_client = None
     try:
         print("=== Start programu ===")
@@ -63,9 +66,15 @@ def main():
 
         total_tables = 0
         processed_bases = 0
+        failed_bases = []  # Lista nieudanych synchronizacji
         
         # Iteruj przez wszystkie bazy
         for base_id, base_name in bases.items():
+            # Sprawdź czy baza nie jest wykluczona
+            if base_name in excluded_databases:
+                print(f"\n=== Pomijanie wykluczonej bazy: {base_name} ===")
+                continue
+                
             print(f"\n=== Przetwarzanie bazy: {base_name} ===")
             print(f"ID bazy: {base_id}")
             
@@ -73,21 +82,14 @@ def main():
                 # Pobierz schemat bazy
                 print(f"3. Pobieranie schematu bazy {base_name}...")
                 schema = airtable_client.get_base_schema(base_id)
-                print("Otrzymany schemat:")
-                print(f"Schema: {schema}")
                 print(f"Znaleziono {len(schema['tables'])} tabel w bazie")
                 total_tables += len(schema['tables'])
                 
                 print("\n4. Szczegółowy schemat bazy:")
                 print("Tabele:")
                 for table in schema['tables']:
-                    print(f"  - Nazwa tabeli: {table['name']}")
-                    print("    Pola:")
-                    for field in table['fields']:
-                        print(f"      - {field['name']} (typ: {field['type']})")
+                    print(f"  - {table['name']}")
                 
-                SchemaPrinter.print_schema(schema)
-
                 # Synchronizacja schematu
                 print(f"\n5. Synchronizacja schematu bazy {base_name}...")
                 sync_start_time = time.time()
@@ -114,7 +116,7 @@ def main():
             except Exception as e:
                 print(f"!!! Błąd podczas przetwarzania bazy {base_name}: {str(e)}")
                 print(f"Typ błędu: {type(e).__name__}")
-                print(f"Szczegóły błędu: {e.__dict__ if hasattr(e, '__dict__') else 'Brak dodatkowych szczegółów'}")
+                failed_bases.append((base_name, str(e)))
                 continue
 
         # Wyświetl listę tabel w PostgreSQL po synchronizacji
@@ -129,6 +131,12 @@ def main():
         print(f"Całkowity czas wykonania: {total_time:.2f} sekund")
         print(f"Liczba przetworzonych baz: {processed_bases}/{len(bases)}")
         print(f"Liczba przetworzonych tabel: {total_tables}")
+        
+        if failed_bases:
+            print("\n=== Bazy, których nie udało się zsynchronizować ===")
+            for base_name, error in failed_bases:
+                print(f"- {base_name}: {error}")
+        
         print("Program zakończył działanie pomyślnie")
 
     except Exception as e:

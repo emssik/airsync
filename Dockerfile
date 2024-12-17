@@ -1,0 +1,51 @@
+# Używamy oficjalnego obrazu Pythona 3.12
+FROM python:3.12-slim
+
+# Ustawiamy zmienne środowiskowe
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    POETRY_VERSION=1.7.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1
+
+# Dodajemy Poetry do PATH
+ENV PATH="$POETRY_HOME/bin:$PATH"
+
+# Instalujemy niezbędne pakiety systemowe
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        build-essential \
+        libpq-dev \
+        cron \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalujemy Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
+# Ustawiamy katalog roboczy
+WORKDIR /app
+
+# Kopiujemy pliki konfiguracyjne Poetry
+COPY pyproject.toml poetry.lock* ./
+
+# Instalujemy zależności
+RUN poetry install --no-root
+
+# Kopiujemy kod źródłowy
+COPY . .
+
+# Instalujemy projekt
+RUN poetry install
+
+# Tworzymy plik z zadaniem cron
+RUN echo "0 2 * * * cd /app && /opt/poetry/bin/poetry run python3 /app/main.py >> /var/log/cron.log 2>&1" > /etc/cron.d/script-cron
+RUN chmod 0644 /etc/cron.d/script-cron
+RUN crontab /etc/cron.d/script-cron
+
+# Tworzymy plik logów
+RUN touch /var/log/cron.log
+
+# Zmieniamy domyślne polecenie na uruchomienie crona w trybie foreground
+CMD ["cron", "-f"]
