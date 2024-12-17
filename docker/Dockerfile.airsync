@@ -27,14 +27,11 @@ RUN curl -sSL https://install.python-poetry.org | python3 -
 # Ustawiamy katalog roboczy
 WORKDIR /app
 
-# Kopiujemy pliki konfiguracyjne Poetry
-COPY pyproject.toml poetry.lock* ./
+# Kopiujemy kod źródłowy (z wykluczeniem plików, które nie powinny trafić do obrazu)
+COPY .. /app/
 
 # Instalujemy zależności
 RUN poetry install --no-root
-
-# Kopiujemy kod źródłowy
-COPY . .
 
 # Instalujemy projekt
 RUN poetry install
