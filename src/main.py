@@ -1,58 +1,150 @@
 from dotenv import load_dotenv
 import os
 import time
+import yaml
 from emsairtable.airtable_client import AirtableClient
 from emsairtable.schema_printer import SchemaPrinter
+from emsairtable.schema_sync import SchemaSync
+from emsairtable.data_sync import DataSync
+from database.postgresql import PostgresClient
 
-# Załaduj zmienne środowiskowe z pliku .env
-load_dotenv()
-
-# Odczytaj klucz API
-AIRTABLE_API_KEY = os.getenv('AIRTABLE_API_KEY')
+def load_config():
+    with open('config.yaml', 'r') as file:
+        return yaml.safe_load(file)
 
 def main():
-    """Główna funkcja programu wyświetlająca informacje o bazie Mentoring"""
+    """Główna funkcja programu synchronizująca wszystkie dostępne bazy Airtable z PostgreSQL"""
+    # Wczytaj zmienne środowiskowe i konfigurację
+    load_dotenv()
+    config = load_config()
+    
+    # Konfiguracja Airtable
+    AIRTABLE_API_KEY = os.getenv('AIRTABLE_API_KEY')
+    
     if not AIRTABLE_API_KEY:
         print("Błąd: Brak klucza API Airtable")
         return
 
+    # Konfiguracja PostgreSQL z pliku config.yaml
+    pg_config = {
+        'host': config['database']['host'],
+        'port': str(config['database']['port']),
+        'database_name': config['database']['database_name'],
+        'user': config['database']['user'],
+        'password': os.getenv('POSTGRESQL_PASSWORD'),
+        'schema': os.getenv('POSTGRES_SCHEMA', 'public')
+    }
+        
+    if not pg_config['password']:
+        raise ValueError("Brak wymaganej zmiennej środowiskowej POSTGRESQL_PASSWORD")
+
+    # Pobierz listę wykluczonych baz
+    excluded_databases = config['database'].get('excluded_databases', [])
+
+    postgres_client = None
     try:
+        print("=== Start programu ===")
         start_time = time.time()
         
-        # Inicjalizacja klienta Airtable
-        client = AirtableClient(AIRTABLE_API_KEY)
+        # Inicjalizacja klientów
+        print("\n1. Inicjalizacja połączenia z Airtable i PostgreSQL...")
+        airtable_client = AirtableClient(AIRTABLE_API_KEY)
+        postgres_client = PostgresClient(pg_config)
+        
+        # Inicjalizacja synchronizatorów
+        schema_sync = SchemaSync(airtable_client, postgres_client)
+        data_sync = DataSync(airtable_client, postgres_client)
         
         # Pobierz wszystkie bazy
-        print("Pobieranie listy baz...")
-        bases = client.list_bases()
+        print("\n2. Pobieranie listy baz...")
+        bases = airtable_client.list_bases()
         bases_time = time.time()
-        print(f"Czas pobierania listy baz: {bases_time - start_time:.2f} sekund")
-        
-        # Znajdź bazę Mentoring
-        mentoring_base_id = None
+        print(f"Znaleziono {len(bases)} baz danych:")
         for base_id, base_name in bases.items():
-            if base_name == "Mentoring":
-                mentoring_base_id = base_id
-                break
+            print(f"- {base_name} (ID: {base_id})")
+        print(f"Czas pobierania listy baz: {bases_time - start_time:.2f} sekund")
+
+        total_tables = 0
+        processed_bases = 0
+        failed_bases = []  # Lista nieudanych synchronizacji
         
-        if not mentoring_base_id:
-            print("Nie znaleziono bazy 'Mentoring'")
-            return
+        # Iteruj przez wszystkie bazy
+        for base_id, base_name in bases.items():
+            # Sprawdź czy baza nie jest wykluczona
+            if base_name in excluded_databases:
+                print(f"\n=== Pomijanie wykluczonej bazy: {base_name} ===")
+                continue
+                
+            print(f"\n=== Przetwarzanie bazy: {base_name} ===")
+            print(f"ID bazy: {base_id}")
             
-        # Pobierz i wyświetl szczegółowy schemat bazy Mentoring
-        print("\nPobieranie schematu bazy Mentoring...")
-        schema = client.get_base_schema(mentoring_base_id)
-        schema_time = time.time()
-        print(f"Czas pobierania schematu: {schema_time - bases_time:.2f} sekund")
-        
-        print("\nSzczegółowy schemat bazy Mentoring:")
-        SchemaPrinter.print_schema(schema)
-        
+            try:
+                # Pobierz schemat bazy
+                print(f"3. Pobieranie schematu bazy {base_name}...")
+                schema = airtable_client.get_base_schema(base_id)
+                print(f"Znaleziono {len(schema['tables'])} tabel w bazie")
+                total_tables += len(schema['tables'])
+                
+                print("\n4. Szczegółowy schemat bazy:")
+                print("Tabele:")
+                for table in schema['tables']:
+                    print(f"  - {table['name']}")
+                
+                # Synchronizacja schematu
+                print(f"\n5. Synchronizacja schematu bazy {base_name}...")
+                sync_start_time = time.time()
+                try:
+                    schema_sync.sync_schema(base_id)
+                except Exception as e:
+                    print(f"!!! Błąd podczas synchronizacji schematu: {str(e)}")
+                    print(f"Szczegóły błędu: {type(e).__name__}")
+                    raise
+                
+                # Synchronizacja danych
+                print(f"\n6. Synchronizacja danych bazy {base_name}...")
+                try:
+                    data_sync.sync_base_data(base_id)
+                except Exception as e:
+                    print(f"!!! Błąd podczas synchronizacji danych: {str(e)}")
+                    print(f"Szczegóły błędu: {type(e).__name__}")
+                    raise
+                
+                sync_time = time.time() - sync_start_time
+                print(f"Czas synchronizacji bazy {base_name}: {sync_time:.2f} sekund")
+                processed_bases += 1
+                
+            except Exception as e:
+                print(f"!!! Błąd podczas przetwarzania bazy {base_name}: {str(e)}")
+                print(f"Typ błędu: {type(e).__name__}")
+                failed_bases.append((base_name, str(e)))
+                continue
+
+        # Wyświetl listę tabel w PostgreSQL po synchronizacji
+        print("\n=== Podsumowanie synchronizacji ===")
+        print("\nTabele w PostgreSQL po synchronizacji:")
+        postgres_tables = schema_sync.get_postgres_tables()
+        for table in postgres_tables:
+            print(f"- {table}")
+
         total_time = time.time() - start_time
-        print(f"\nCałkowity czas wykonania: {total_time:.2f} sekund")
+        print("\n=== Podsumowanie końcowe ===")
+        print(f"Całkowity czas wykonania: {total_time:.2f} sekund")
+        print(f"Liczba przetworzonych baz: {processed_bases}/{len(bases)}")
+        print(f"Liczba przetworzonych tabel: {total_tables}")
+        
+        if failed_bases:
+            print("\n=== Bazy, których nie udało się zsynchronizować ===")
+            for base_name, error in failed_bases:
+                print(f"- {base_name}: {error}")
+        
+        print("Program zakończył działanie pomyślnie")
 
     except Exception as e:
-        print(f"Wystąpił błąd: {e}")
+        print(f"\n!!! Wystąpił krytyczny błąd: {e}")
+        raise
+    finally:
+        if postgres_client:
+            postgres_client.close()
 
 if __name__ == "__main__":
     main()

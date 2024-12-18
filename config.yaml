@@ -1,0 +1,11 @@
+database:
+  host: 172.20.0.2
+  port: 5432
+  database_name: airsync
+  user: emssik
+  excluded_databases:
+    - Ahoy!
+    - OC - asystentka
+    - Interface
+    - PING - PROJEKTY
+    - Bonjoro

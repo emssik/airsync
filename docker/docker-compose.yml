@@ -1,0 +1,43 @@
+services:
+  db:
+    image: c8n.io/emssik/psql:1.0
+    container_name: airsync_db
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      airsync_network:
+        ipv4_address: 172.20.0.2
+    command: -p 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airsync:
+    image: c8n.io/emssik/airsync:1.0
+    container_name: airsync_app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - airsync_network
+
+networks:
+  airsync_network:
+    name: airsync_network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+volumes:
+  postgres_data:
+    name: airsync_postgres_data 

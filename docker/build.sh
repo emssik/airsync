@@ -1,0 +1,2 @@
+docker buildx build -f Dockerfile.airsync --platform linux/amd64 -t c8n.io/emssik/airsync:1.0 --push ..
+docker buildx build -f Dockerfile.pgsql   --platform linux/amd64 -t c8n.io/emssik/psql:1.0    --push ..
