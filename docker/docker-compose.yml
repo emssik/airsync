@@ -7,12 +7,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5435:5435"
+      - "5432:5432"
     networks:
-      - airsync_network
-    command: -p 5435
+      airsync_network:
+        ipv4_address: 172.20.0.2
+    command: -p 5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -p 5435"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -p 5432"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,6 +33,10 @@ networks:
   airsync_network:
     name: airsync_network
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
 
 volumes:
   postgres_data:

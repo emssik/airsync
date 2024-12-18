@@ -37,7 +37,7 @@ RUN poetry install --no-root
 RUN poetry install
 
 # Tworzymy plik z zadaniem cron
-RUN echo "0 2 * * * cd /app && /opt/poetry/bin/poetry run python3 /app/main.py >> /var/log/cron.log 2>&1" > /etc/cron.d/script-cron
+RUN echo "0 2 * * * cd /app && /opt/poetry/bin/poetry run python3 /app/src/main.py >> /var/log/cron.log 2>&1" > /etc/cron.d/script-cron
 RUN chmod 0644 /etc/cron.d/script-cron
 RUN crontab /etc/cron.d/script-cron
 
