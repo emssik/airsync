@@ -1,6 +1,6 @@
 database:
-  host: localhost
-  port: 5435
+  host: 172.20.0.2
+  port: 5432
   database_name: airsync
   user: emssik
   excluded_databases:

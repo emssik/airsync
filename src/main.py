@@ -34,7 +34,7 @@ def main():
         'password': os.getenv('POSTGRESQL_PASSWORD'),
         'schema': os.getenv('POSTGRES_SCHEMA', 'public')
     }
-    
+        
     if not pg_config['password']:
         raise ValueError("Brak wymaganej zmiennej środowiskowej POSTGRESQL_PASSWORD")
 
