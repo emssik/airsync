@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "airsync"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["Daniel Roziecki <emssik@emssik.eu>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
