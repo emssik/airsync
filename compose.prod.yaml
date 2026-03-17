@@ -1,0 +1,31 @@
+services:
+  airsync-db:
+    image: postgres:17-alpine
+    container_name: airsync-db
+    restart: always
+    environment:
+      POSTGRES_USER: emssik
+      POSTGRES_DB: airsync
+    env_file:
+      - .env
+    volumes:
+      - airsync-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airsync-app:
+    image: ghcr.io/emssik/airsync:latest
+    container_name: airsync-app
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      airsync-db:
+        condition: service_healthy
+
+volumes:
+  airsync-pgdata:
+    name: airsync-pgdata

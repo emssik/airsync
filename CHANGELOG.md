@@ -7,6 +7,16 @@ projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-17
+
+### Added
+- Skrypt `deploy.sh` — automatyzacja lokalnego buildu, szyfrowania sekretów (SOPS/age) i deploymentu na serwer via SSH
+- Skrypt `deploy-server.sh` — po stronie serwera: deszyfrowanie sekretów i restart kontenerów via Docker Compose
+- `compose.prod.yaml` — konfiguracja produkcyjna Docker Compose z obrazem z GHCR i healthcheckiem bazy danych
+- `.dockerignore` — wykluczenie plików wrażliwych i zbędnych z kontekstu Docker build
+- `secrets.enc.env` — zaszyfrowane sekrety środowiskowe (SOPS/age); bezpieczne do przechowywania w repozytorium
+- `specs/problems.md` — code review identyfikujący krytyczne bugi, naruszenia DRY/KISS i priorytety napraw
+
 ## [0.2.0] - 2026-03-11
 
 ### Added
