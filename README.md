@@ -39,7 +39,15 @@ poetry install
 
 ## Konfiguracja
 
-Plik `config.yaml` zawiera konfigurację bazy danych i listę wykluczonych baz Airtable.
+Skopiuj pliki przykładowe i uzupełnij własnymi danymi:
+
+```bash
+cp .env.example .env
+cp config.yaml.example config.yaml
+```
+
+- `.env` — klucz API Airtable i hasło do PostgreSQL
+- `config.yaml` — adres bazy danych, użytkownik i lista wykluczonych baz Airtable
 
 ## Uruchomienie
 

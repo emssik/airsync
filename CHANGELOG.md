@@ -7,6 +7,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-03-17
+
+### Added
+- `.env.example` i `config.yaml.example` — pliki szablonowe ułatwiające pierwsze uruchomienie projektu
+
+### Changed
+- `README.md` — sekcja konfiguracji przepisana na instrukcję kopiowania plików przykładowych
+
 ## [0.3.1] - 2026-03-17
 
 ### Added

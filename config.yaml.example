@@ -1,0 +1,7 @@
+database:
+  host: airsync-db
+  port: 5432
+  database_name: airsync
+  user: your_user
+  excluded_databases:
+    # - Nazwa bazy Airtable do pominięcia
