@@ -1,5 +1,7 @@
 # airsync
 
+> This project is published as part of [PIY — Prompt It Yourself](https://blog.atdpath.com/piy), a personal initiative launched on March 8, 2026, encouraging others to build their own apps with the help of LLMs.
+
 Narzędzie do automatycznej synchronizacji baz Airtable do PostgreSQL. Pobiera schematy i dane ze wszystkich dostępnych baz Airtable, tworzy odpowiadające im tabele w PostgreSQL i utrzymuje dane w synchronizacji.
 
 ## Funkcje

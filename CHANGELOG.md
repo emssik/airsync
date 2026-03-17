@@ -7,6 +7,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-03-17
+
+### Added
+- `LICENSE` — licencja projektu dodana do repozytorium
+
+### Changed
+- `README.md` — informacja o inicjatywie PIY (Prompt It Yourself) jako kontekście powstania projektu
+
 ## [0.3.0] - 2026-03-17
 
 ### Added
