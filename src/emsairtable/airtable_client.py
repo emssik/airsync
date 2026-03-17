@@ -27,7 +27,7 @@ class AirtableClient:
         
         # Pobierz nazwę bazy z listy baz
         bases = self.list_bases()
-        base_name = bases.get(base_id, base_id).lower().replace(' ', '_')
+        base_name = bases.get(base_id, base_id)  # surowa nazwa, bez czyszczenia
         
         return {
             'id': base_id,
@@ -35,7 +35,6 @@ class AirtableClient:
             'tables': [{
                 'id': table.id,
                 'name': table.name,
-                'pg_name': f"{base_name}_{table.name.lower().replace(' ', '_')}",
                 'fields': [{
                     'id': field.id,
                     'name': field.name,
@@ -46,36 +45,8 @@ class AirtableClient:
         }
 
     def _normalize_field_type(self, airtable_type: str) -> str:
-        """
-        Normalizuje typ pola z Airtable do standardowego formatu.
-        
-        Args:
-            airtable_type: Oryginalny typ pola z Airtable
-        Returns:
-            Znormalizowany typ pola
-        """
-        type_mapping = {
-            'multipleAttachments': 'text',
-            'multilineText': 'multilineText',
-            'singleLineText': 'singleLineText',
-            'checkbox': 'checkbox',
-            'date': 'date',
-            'dateTime': 'dateTime',
-            'number': 'number',
-            'currency': 'currency',
-            'percent': 'number',
-            'email': 'email',
-            'url': 'url',
-            'phoneNumber': 'phone',
-            'multipleSelects': 'multipleSelects',
-            'singleSelect': 'singleSelect',
-            'multipleRecordLinks': 'multipleRecordLinks',
-            'formula': 'formula',
-            'rollup': 'text',
-            'count': 'count',
-            'lookup': 'text'
-        }
-        return type_mapping.get(airtable_type, 'text')
+        """Zwraca surowy typ pola z Airtable. Mapowanie na typy SQL obsługuje SchemaSync."""
+        return airtable_type
 
     def get_table_records(self, base_id: str, table_name: str) -> List[Dict]:
         """

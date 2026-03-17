@@ -23,34 +23,12 @@ class SchemaPrinter:
     def print_schema(cls, schema: Dict, indent: int = 0) -> None:
         """
         Wyświetla schemat bazy w czytelnym formacie.
-        
+
         Args:
             schema: Słownik zawierający schemat bazy
             indent: Poziom wcięcia (domyślnie 0)
         """
-        prefix = "  " * indent
-        
-        print(f"{prefix}Nazwa bazy: {schema['name']}")
-        print(f"{prefix}ID bazy: {schema['id']}")
-        print(f"{prefix}Tabele:")
-        
-        for table in schema['tables']:
-            print(f"{prefix}  - Tabela: {table['name']}")
-            print(f"{prefix}    ID: {table['id']}")
-            print(f"{prefix}    Pola:")
-            
-            for field in table['fields']:
-                print(f"{prefix}      - {field['name']} (typ: {field['type']})")
-                if field['options']:
-                    try:
-                        options_str = json.dumps(
-                            cls.serialize_options(field['options']), 
-                            indent=2, 
-                            ensure_ascii=False
-                        )
-                        print(f"{prefix}        Opcje: {options_str}")
-                    except Exception:
-                        print(f"{prefix}        Opcje: {field['options']}")
+        print(cls.get_schema_str(schema, indent))
 
     @classmethod
     def get_schema_str(cls, schema: Dict, indent: int = 0) -> str:
