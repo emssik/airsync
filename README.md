@@ -2,104 +2,104 @@
 
 > This project is published as part of [PIY — Prompt It Yourself](https://blog.atdpath.com/piy), a personal initiative launched on March 8, 2026, encouraging others to build their own apps with the help of LLMs.
 
-Narzędzie do automatycznej synchronizacji baz Airtable do PostgreSQL. Pobiera schematy i dane ze wszystkich dostępnych baz Airtable, tworzy odpowiadające im tabele w PostgreSQL i utrzymuje dane w synchronizacji.
+Automatic synchronization of Airtable bases to PostgreSQL. Fetches schemas and data from all available Airtable bases, creates corresponding PostgreSQL tables, and keeps data in sync.
 
-## Funkcje
+## Features
 
-- Synchronizacja wielu baz Airtable jednocześnie
-- Automatyczne tworzenie tabel PostgreSQL na podstawie schematów Airtable
-- UPSERT — wstawia nowe rekordy lub aktualizuje istniejące
-- Mapowanie typów Airtable na typy PostgreSQL
-- Automatyczne kolumny `created_at` i `updated_at`
-- Tryb dry-run — podgląd zmian bez zapisu do bazy
-- Synchronizacja wybranej bazy po ID
-- Lista wykluczeń w konfiguracji
-- Harmonogram cron (codziennie o 2:00)
+- Sync multiple Airtable bases at once
+- Automatic PostgreSQL table creation based on Airtable schemas
+- UPSERT — inserts new records or updates existing ones
+- Airtable-to-PostgreSQL type mapping
+- Automatic `created_at` and `updated_at` columns
+- Dry-run mode — preview changes without writing to the database
+- Sync a specific base by ID
+- Exclusion list in configuration
+- Cron schedule (daily at 2:00 AM)
 
-## Wymagania
+## Requirements
 
 - Python 3.12+
 - Poetry
 - PostgreSQL 17
-- Docker i Docker Compose (do deployu)
+- Docker & Docker Compose (for deployment)
 
-## Zmienne środowiskowe
+## Environment variables
 
-| Zmienna | Opis |
+| Variable | Description |
 |---|---|
-| `AIRTABLE_API_KEY` | Klucz API do Airtable |
-| `POSTGRESQL_PASSWORD` | Hasło do bazy PostgreSQL |
-| `POSTGRES_SCHEMA` | Schemat PostgreSQL (domyślnie `public`) |
+| `AIRTABLE_API_KEY` | Airtable API key |
+| `POSTGRESQL_PASSWORD` | PostgreSQL password |
+| `POSTGRES_SCHEMA` | PostgreSQL schema (defaults to `public`) |
 
-## Instalacja lokalna
+## Local installation
 
 ```bash
 poetry install
 ```
 
-## Konfiguracja
+## Configuration
 
-Skopiuj pliki przykładowe i uzupełnij własnymi danymi:
+Copy the example files and fill in your own data:
 
 ```bash
 cp .env.example .env
 cp config.yaml.example config.yaml
 ```
 
-- `.env` — klucz API Airtable i hasło do PostgreSQL
-- `config.yaml` — adres bazy danych, użytkownik i lista wykluczonych baz Airtable
+- `.env` — Airtable API key and PostgreSQL password
+- `config.yaml` — database address, user, and list of excluded Airtable bases
 
-## Uruchomienie
+## Usage
 
 ```bash
-# Synchronizacja wszystkich baz
+# Sync all bases
 poetry run python src/main.py
 
-# Synchronizacja konkretnej bazy
+# Sync a specific base
 poetry run python src/main.py --base-id APP123
 
-# Podgląd bez zapisu (dry-run)
+# Preview without writing (dry-run)
 poetry run python src/main.py --dry-run
 ```
 
 ## Docker
 
-### Budowanie obrazów
+### Building images
 
 ```bash
 ./docker/build.sh
 ```
 
-### Deploy produkcyjny
+### Production deploy
 
 ```bash
 docker compose -f compose.prod.yaml up -d
 ```
 
-## Stack technologiczny
+## Tech stack
 
-- **pyairtable 2.3.6** — klient API Airtable (wersja 3.0.0 nie działa zgodnie z oczekiwaniami)
-- **psycopg2** — adapter PostgreSQL
-- **PyYAML** — parsowanie konfiguracji
-- **python-dotenv** — zmienne środowiskowe
-- **Poetry** — zarządzanie zależnościami
+- **pyairtable 2.3.6** — Airtable API client (version 3.0.0 doesn't work as expected)
+- **psycopg2** — PostgreSQL adapter
+- **PyYAML** — configuration parsing
+- **python-dotenv** — environment variables
+- **Poetry** — dependency management
 
-## Struktura projektu
+## Project structure
 
 ```
 src/
-├── main.py                    # Punkt wejścia
-├── config.py                  # Ładowanie konfiguracji
+├── main.py                    # Entry point
+├── config.py                  # Configuration loader
 ├── database/
-│   └── postgresql.py          # Klient PostgreSQL
+│   └── postgresql.py          # PostgreSQL client
 └── emsairtable/
-    ├── airtable_client.py     # Klient API Airtable
-    ├── schema_sync.py         # Synchronizacja schematów
-    ├── data_sync.py           # Synchronizacja danych
-    └── schema_printer.py      # Formatowanie schematów
+    ├── airtable_client.py     # Airtable API client
+    ├── schema_sync.py         # Schema synchronization
+    ├── data_sync.py           # Data synchronization
+    └── schema_printer.py      # Schema formatting
 ```
 
-## Testy
+## Tests
 
 ```bash
 poetry run pytest
