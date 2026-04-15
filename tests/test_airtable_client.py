@@ -60,20 +60,12 @@ def test_get_table_records(mock_api):
         {"id": "rec2", "fields": {"Field 1": "Value 2"}}
     ]
     
-    # Przygotuj mock dla table.all()
-    mock_all = Mock()
-    mock_all.return_value = expected_records
-    
     # Przygotuj mock dla table
     mock_table = Mock()
-    type(mock_table).all = Mock(return_value=expected_records)  # Mockujemy jako property
-    
-    # Przygotuj mock dla base.table()
-    mock_base = Mock()
-    mock_base.table = Mock(return_value=mock_table)
-    
-    # Skonfiguruj mock dla Api().base()
-    mock_api.return_value.base = Mock(return_value=mock_base)
+    mock_table.all.return_value = expected_records
+
+    # Skonfiguruj mock dla Api().table(base_id, table_name)
+    mock_api.return_value.table = Mock(return_value=mock_table)
 
     # Wykonaj test
     client = AirtableClient("fake_api_key")
