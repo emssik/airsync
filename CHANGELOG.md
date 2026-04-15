@@ -7,6 +7,21 @@ projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-04-15
+
+### Security
+- Aktualizacja `requests` (→ 2.33.1) i `urllib3` (→ 2.6.3) — fixy dla CVE w zależnościach tranzytywnych (CVE-2024-47081, CVE-2026-25645, CVE-2025-50181/2, CVE-2025-66418/71, CVE-2026-21441)
+
+### Changed
+- `pytest` i `pytest-mock` przeniesione do `[tool.poetry.group.dev.dependencies]` — nie są już instalowane w obrazie produkcyjnym Docker (co usuwa z niego m.in. CVE-2025-71176)
+- Aktualizacja zależności: `psycopg2` 2.9.11, `pyairtable` 2.3.7, `python-dotenv` 1.2.2, `pyyaml` 6.0.3, `certifi` 2026.2.25, `pytest-mock` 3.15.1
+- Test `test_database_connection` oznaczony jako `@pytest.mark.integration` i domyślnie pomijany (wymaga działającego PostgreSQL) — uruchamiany przez `pytest -m integration`
+
+### Fixed
+- Konfiguracja pytest: `pythonpath = ["src"]` — naprawia `ModuleNotFoundError` w `test_postgresql` i `test_schema_sync`
+- Test `test_get_table_records` — mock odzwierciedla rzeczywistą ścieżkę wywołania `api.table()`
+- Test `test_create_table` — porównanie struktury `psycopg2.sql.Composed` zamiast stringa (implementacja używa SQL-injection-safe buildera od wersji 0.2.0)
+
 ## [0.3.2] - 2026-03-17
 
 ### Added
