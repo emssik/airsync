@@ -1,4 +1,5 @@
 import pytest
+from psycopg2 import sql
 from src.emsairtable.schema_sync import SchemaSync
 from src.emsairtable.airtable_client import AirtableClient
 from src.database.postgresql import PostgresClient
@@ -36,7 +37,11 @@ def test_clean_name_special_chars(schema_sync):
 
 
 def test_create_table(schema_sync):
-    """Test tworzenia tabeli z różnymi typami pól."""
+    """Test tworzenia tabeli z różnymi typami pól.
+
+    Implementacja buduje zapytanie jako psycopg2.sql.Composed (ochrona przed
+    SQL injection), więc porównujemy strukturę Composable-i, nie string.
+    """
     fields = [
         {"name": "Text Field", "type": "singleLineText"},
         {"name": "Number Field", "type": "number"},
@@ -44,25 +49,28 @@ def test_create_table(schema_sync):
         {"name": "Record Link", "type": "multipleRecordLinks"},
         {"name": "checkbox.field", "type": "checkbox"},
     ]
-    
+
     schema_sync.create_table("test_table", fields)
-    
-    expected_sql = """
-        CREATE TABLE IF NOT EXISTS public.test_table (
-            airtable_id TEXT PRIMARY KEY,
-            text_field TEXT,
-            number_field NUMERIC,
-            date_field DATE,
-            record_link TEXT,
-            checkbox_field BOOLEAN,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """
-    
+
+    expected_fields = sql.SQL(", ").join([
+        sql.SQL("airtable_id TEXT PRIMARY KEY"),
+        sql.SQL("{} {}").format(sql.Identifier("text_field"), sql.SQL("TEXT")),
+        sql.SQL("{} {}").format(sql.Identifier("number_field"), sql.SQL("NUMERIC")),
+        sql.SQL("{} {}").format(sql.Identifier("date_field"), sql.SQL("DATE")),
+        sql.SQL("{} {}").format(sql.Identifier("record_link"), sql.SQL("TEXT")),
+        sql.SQL("{} {}").format(sql.Identifier("checkbox_field"), sql.SQL("BOOLEAN")),
+        sql.SQL("created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        sql.SQL("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ])
+    expected_sql = sql.SQL("CREATE TABLE IF NOT EXISTS {schema}.{table} ({fields})").format(
+        schema=sql.Identifier("public"),
+        table=sql.Identifier("test_table"),
+        fields=expected_fields,
+    )
+
     schema_sync.postgres.execute_modification.assert_called()
     actual_sql = schema_sync.postgres.execute_modification.call_args_list[0][0][0]
-    assert ' '.join(actual_sql.split()) == ' '.join(expected_sql.split())
+    assert repr(actual_sql) == repr(expected_sql)
 
 
 def test_type_mapping(schema_sync):

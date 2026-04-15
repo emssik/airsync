@@ -23,8 +23,13 @@ def db_client(db_config):
     yield client
     client.close()  # Zamyka połączenie po zakończeniu testu
 
+@pytest.mark.integration
 def test_database_connection(db_client):
-    """Sprawdza, czy połączenie z bazą danych działa"""
+    """Sprawdza, czy połączenie z bazą danych działa.
+
+    Wymaga dzialajacego PostgreSQL + config.yaml + POSTGRESQL_PASSWORD w .env.
+    Uruchamiaj: pytest -m integration
+    """
     try:
         # Proste zapytanie testowe
         result = db_client.execute_query("SELECT 1 as test")
