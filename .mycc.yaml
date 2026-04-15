@@ -1,0 +1,46 @@
+actions:
+  - name: commit
+    cmd: "/c.commit --version"
+    pane: 1
+    type: claude
+
+  - name: push
+    cmd: "git push origin $(git branch --show-current)"
+    pane: 3
+
+  - name: sync-dry
+    cmd: "poetry run python src/main.py --dry-run"
+    pane: 3
+
+  - name: sync
+    cmd: "poetry run python src/main.py"
+    pane: 3
+
+  - name: test
+    cmd: "poetry run pytest"
+    pane: 3
+
+  - name: test-integration
+    cmd: "poetry run pytest -m integration"
+    pane: 3
+
+  - name: deploy
+    cmd: "./deploy.sh"
+    pane: 3
+
+context:
+  stack: python 3.12, poetry, pyairtable, psycopg2
+  structure: |
+    Airtable → PostgreSQL sync. Entry point: src/main.py (CLI with --dry-run and --base-id flags).
+    Code split: src/emsairtable/ (Airtable client, schema sync, data sync) and src/database/ (PostgreSQL client).
+    Config loaded from config.yaml (non-secret) + .env (POSTGRESQL_PASSWORD).
+  testing: |
+    pytest with pythonpath=["src"]. Two markers: default unit tests, and @pytest.mark.integration
+    for tests requiring a real PostgreSQL (skipped by default via addopts).
+    Run integration tests: poetry run pytest -m integration
+  notes: |
+    Deployment: deploy.sh (local) builds Docker image, encrypts secrets with SOPS/age,
+    pushes to GHCR and triggers deploy-server.sh on the server. Production runs via
+    compose.prod.yaml with cron inside container (daily sync at 2am).
+    SQL is always built via psycopg2.sql.Composed (SQL-injection-safe) — never format
+    table/column names into raw strings.

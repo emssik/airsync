@@ -7,6 +7,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-04-15
+
+### Added
+- `.mycc.yaml` — konfiguracja workspace mycc z akcjami `commit` (/c.commit --version), `push` (git push origin na aktualny branch), `sync`/`sync-dry`, `test`/`test-integration` i `deploy` oraz kontekstem projektu dla agentów AI
+
 ## [0.3.3] - 2026-04-15
 
 ### Security
