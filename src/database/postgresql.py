@@ -1,5 +1,6 @@
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Union
 import psycopg2
+from psycopg2 import sql as psycopg2_sql
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
 
@@ -64,7 +65,7 @@ class PostgresClient:
             cursor.execute(query, params)
             return cursor.fetchall()
 
-    def execute_modification(self, query: str, params: Optional[tuple] = None) -> int:
+    def execute_modification(self, query: Union[str, psycopg2_sql.Composable], params: Optional[tuple] = None) -> int:
         """
         Wykonuje zapytanie modyfikujące dane (INSERT, UPDATE, DELETE).
         W trybie dry_run pomija wykonanie.

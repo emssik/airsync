@@ -7,6 +7,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-04-16
+
+### Fixed
+- Poprawiony type hint `execute_modification()` — akceptuje `Union[str, Composable]` zamiast samego `str` (zgodnie z faktycznym użyciem w `schema_sync.py`)
+
+### Changed
+- Komentarz przy pinowanych `requests`/`urllib3` w `pyproject.toml` — chroni przed przypadkowym usunięciem CVE pinów
+
 ## [0.3.4] - 2026-04-15
 
 ### Added

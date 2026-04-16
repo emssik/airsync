@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "airsync"
-version = "0.3.4"
+version = "0.3.5"
 description = ""
 authors = ["Daniel Roziecki <emssik@emssik.eu>"]
 readme = "README.md"
@@ -12,6 +12,7 @@ python-dotenv = "^1.0.1"
 pyairtable = "^2.3.6"
 psycopg2 = "^2.9.10"
 pyyaml = "^6.0.2"
+# CVE security pinning — transitive deps via pyairtable. Nie usuwaj bez weryfikacji CVE (zob. CHANGELOG 0.3.3).
 requests = "^2.33.1"
 urllib3 = "^2.6.3"
 
