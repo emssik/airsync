@@ -54,7 +54,7 @@ class PostgresClient:
             finally:
                 cursor.close()
 
-    def execute_query(self, query: str, params: Optional[tuple] = None) -> list:
+    def execute_query(self, query: Union[str, psycopg2_sql.Composable], params: Optional[tuple] = None) -> list:
         """
         Wykonuje zapytanie SELECT i zwraca wyniki.
         W trybie dry_run zwraca pustą listę.
@@ -77,7 +77,7 @@ class PostgresClient:
             cursor.execute(query, params)
             return cursor.rowcount
 
-    def execute_many(self, query, params_list: list) -> None:
+    def execute_many(self, query: Union[str, psycopg2_sql.Composable], params_list: list) -> None:
         """Wykonuje zapytanie dla listy parametrów (batch insert/update/upsert)."""
         if self.dry_run:
             print(f"  [DRY RUN] Pominięto wsadowe wstawianie ({len(params_list)} rekordów)")

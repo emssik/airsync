@@ -7,6 +7,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-04-17
+
+### Fixed
+- Rozszerzony type hint `execute_query()` i `execute_many()` — akceptują `Union[str, Composable]` (spójnie z `execute_modification()`, zgodnie z faktycznym użyciem w `data_sync.py`)
+
 ## [0.3.5] - 2026-04-16
 
 ### Fixed

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "airsync"
-version = "0.3.5"
+version = "0.3.6"
 description = ""
 authors = ["Daniel Roziecki <emssik@emssik.eu>"]
 readme = "README.md"
